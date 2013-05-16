@@ -1,13 +1,10 @@
-#!/usr/bin/python
+#!/usr/bin/env python
+
 import imp
-import peg
-from peg import *
+from pegvm import *
+from pegvm.peg import *
 from sys import argv
 import os
-
-DIR = os.path.dirname(os.path.realpath(__file__))
-peg_grammar = imp.load_source('peg_grammar', DIR+'/generated_grammars/gen_peg_grammar.py')
-PEG_GRAMMAR = peg_grammar.PEG_GRAMMAR
 
 def usage(name):
     print name+" <syntax-file> <syntax-debug-mode> <input-file> <input-debug-mode> [-gen]"
@@ -40,10 +37,10 @@ if __name__ == '__main__':
     input_data  = open(input_file).read()
 
     ## run it!
-    peg.ConfigureParserInt(syntax_debug_mode)
+    ConfigureParserInt(syntax_debug_mode)
     GRAMMAR = eval(parse_grammar('syntax', syntax_data))
 
-    peg.ConfigureParserInt(input_debug_mode)
+    ConfigureParserInt(input_debug_mode)
     result = GRAMMAR.parse(input_data)
     if result:
         if is_gen: gen(result)
