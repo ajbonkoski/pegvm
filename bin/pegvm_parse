@@ -3,48 +3,125 @@
 import imp
 from pegvm import *
 from pegvm.peg import *
-from sys import argv
+
+import sys
 import os
+import os.path
+from getopt import GetoptError, getopt as GetOpt
 
-def usage(name):
-    print name+" <syntax-file> <syntax-debug-mode> <input-file> <input-debug-mode> [-gen]"
+def usage(fd):
+	fd.write("\n")
 
-def parse_grammar(name, grammar):
-    parsed = PEG_GRAMMAR.parse(grammar)
-    if not parsed:
-        print "Error: Failed to correctly parse '{}'".format(name)
-        exit(1)
-    return parsed.elements[0]
+	fd.write("Pegvm\n")
+	fd.write("Anthony J Bonkoski, ajbonkoski@gmail.com\n")
+	fd.write("\n")
+
+	fd.write("Usage: %s [OPTIONS] [INPUT-FILE]\n" % os.path.basename(sys.argv[0]))
+	fd.write("\n")
+
+	fd.write("Syntax:\n")
+	fd.write("\t-S, --syntax=<file>           Specify a PEG file containing the syntax to use\n")
+	fd.write("\t-s, --syntax-debug=<int>      Debug the parsing of the PEG syntax file (--syntax is required)\n")
+	fd.write("\n")
+
+	fd.write("Input:\n")
+	fd.write("\t-i, --input-debug=<int>       Debug the parsing of the input file\n")
+	fd.write("\n")
+
+        fd.write("\t-g, --gen                     Generate pegvm syntax file\n")
+	fd.write("\t-h, --help                    Show help output\n")
+        fd.write("\n")
+
+	if fd == sys.stderr:
+		sys.exit(1)
+	else:
+		sys.exit(0)
+
+def parse_int(v):
+    try:
+        return int(v)
+    except Exception:
+        sys.stderr.write("error: expected and integer, got '{0}'".format(v))
+        usage(sys.stderr)
+
+def main():
+    MIN_ARGC = 2
+
+    syntax_fname = None
+    syntax_debug = 0
+    input_fname = None
+    input_debug  = 0
+    is_gen = False
+
+    short_options = "hS:s:i:g"
+    long_options = ["help", "syntax=", "syntax-debug=", "input-debug=", "gen"]
+
+    if len(sys.argv) < MIN_ARGC:
+       	usage(sys.stderr)
+
+
+    try:
+        opts, args = GetOpt(sys.argv[1:], short_options, long_options)
+    except GetoptError, e:
+        sys.stderr.write("{0}\n".format(e))
+        usage(sys.stderr)
+
+    for opt, arg in opts:
+        if opt in ("-h", "--help"):
+            usage(sys.stdout)
+        elif opt in ("-S", "--syntax"):
+            syntax_fname = arg
+        elif opt in ("-s", "--syntax-debug"):
+            syntax_debug = parse_int(arg)
+        elif opt in ("-i", "--input-debug"):
+            input_debug = parse_int(arg)
+        elif opt in ("-g", "--gen"):
+            is_gen = True
+
+    if len(args) > 0:
+        input_fname = args[0]
+
+
+    ## final validation
+    if syntax_fname == None and input_fname == None:
+        sys.stderr.write("error: you must provide either a syntax or input file")
+        usage(sys.stderr)
+
+    do_parse(syntax_fname, syntax_debug, input_fname, input_debug, is_gen)
+    sys.exit(0)
+
+def read_file(fname):
+    try:
+        return open(fname).read()
+    except IOError as ex:
+        print ex
+        sys.stderr.write("error: failed to read '{0}'".format(fname))
+        sys.exit(1)
+
+def do_parse(syntax_fname, syntax_debug, input_fname, input_debug, is_gen):
+
+    ## et the GRAMMAR
+    GRAMMAR = PEG_GRAMMAR
+    if syntax_fname != None:
+        ConfigureParserInt(syntax_debug)
+        syntax_data = read_file(syntax_fname)
+        GRAMMAR = eval(parse_grammar(PEG_GRAMMAR, 'syntax', syntax_data))
+
+    ## do the actual 'input' parse
+    if input_fname != None:
+        ConfigureParserInt(input_debug)
+        input_data = read_file(input_fname)
+        result = GRAMMAR.parse(input_data)
+        if result:
+            if is_gen: gen(result)
+            else: print result.elements[0]
+        else:
+            sys.stderr.write("Error: Failed to correctly parse\n")
+            sys.exit(1)
 
 def gen(result):
     elem = result.elements[0]
     print "from peg import *"
     print "GRAMMAR="+elem
 
-if __name__ == '__main__':
-    if len(argv) < 5:
-        usage(argv[0])
-        exit(1)
-
-    ## extract args
-    syntax_file = argv[1]
-    syntax_debug_mode = int(argv[2])
-    input_file = argv[3]
-    input_debug_mode = int(argv[4])
-    is_gen = argv[5] == '-gen' if len(argv) >= 6 else False
-
-    syntax_data = open(syntax_file).read()
-    input_data  = open(input_file).read()
-
-    ## run it!
-    ConfigureParserInt(syntax_debug_mode)
-    GRAMMAR = eval(parse_grammar('syntax', syntax_data))
-
-    ConfigureParserInt(input_debug_mode)
-    result = GRAMMAR.parse(input_data)
-    if result:
-        if is_gen: gen(result)
-        else: print result.elements[0]
-    else:
-        "Error: Failed to correctly parse"
-
+if __name__ == '__main__': main()
