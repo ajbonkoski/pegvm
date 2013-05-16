@@ -1,0 +1,54 @@
+Grammar     <- S Definition+ EOI                    { "Grammar([" + ", ".join([a[0] for a in arg[1]]) + "])"  }
+Definition  <- Name Arrow Expression Action? S      { "Rule("+ arg[0][0] + ", [" + arg[2][0] + "]" + (", "+'""'+'" '+arg[3][0]+' "'+'""' if arg[3][0] != '' else "") + ")" }
+Expression  <- Sequence (OR Sequence)*              { "Expression([" + ", ".join([arg[0][0]] + ([a[1][0] for a in arg[1]] if len(arg) > 1 else [])) + "])" }
+Sequence    <- Prefix+                              { "Sequence([" + ", ".join([a[0] for a in arg[0]]) +"])" }
+Prefix      <- (LOOKAHEAD / NOT)? Suffix            { "Prefix([" + ("'"+arg[0][0][0]+"'" + ", " + arg[1][0] if len(arg) > 1 != '' else arg[0][0]) + "])" }
+Suffix      <- Primary ( OPTION
+                       / ONEORMORE
+                       / ZEROORMORE )? S            { "Suffix([" + arg[0][0] + (", '"+arg[1][0][0]+"'" if arg[1][0] != '' else '') + "])" }
+Primary     <- Name !Arrow
+             / GroupExpr
+             / Literal
+             / Class
+             / ANY                                  { arg[0][0] if len(arg) > 1 else arg[0][0] }
+Name        <- Identifier S                         { "Name(['"+arg[0][0]+"'])" }
+GroupExpr   <- OPEN Expression CLOSE S              { arg[1][0] }
+Literal     <- Quote
+               (!Quote Char)*
+               Quote S
+             / DoubleQuote
+               (!DoubleQuote Char)*
+               DoubleQuote S                        { "Literal([" + quot(''.join([a[1][0][0] for a in arg[1]])) + "])" }
+Class       <- '[' (!']' CharRange)* ']' S          { "Class(" + str([a[1][0] for a in arg[1]]) + ")" }
+CharRange   <- Char '-' Char / Char                 { arg[0] if len(arg) == 1 else (arg[0][0], arg[2][0]) }
+Char        <- BackSlash ( Quote
+                         / DoubleQuote
+                         / BackQuote
+                         / BackSlash
+                         / [nrt]
+                         / [0-2][0-7][0-7]
+                         / [0-7][0-7]?)
+             / !BackSlash .                         { arg[1][0] }
+Action      <- '{' (!'}' .)* '}'                    { ''.join([a[1][0] for a in arg[1]]) }
+
+# Terminals
+Arrow       <- "<-" S     {''}
+OR          <- '/'  S     {''}
+LOOKAHEAD   <- '&'  S     {'&'}
+NOT         <- '!'  S     {'!'}
+OPTION      <- '?'  S     {'?'}
+ZEROORMORE  <- '*'  S     {'*'}
+ONEORMORE   <- '+'  S     {'+'}
+OPEN        <- '('  S     {'('}
+CLOSE       <- ')'  S     {')'}
+ANY         <- '.'  S     {'Any([])'}
+Quote       <- "'"  S     {"'"}
+DoubleQuote <- '"'  S     {'"'}
+BackSlash   <- '\\' S     {'\\\\'}
+BackQuote   <- '`'  S     {'`'}
+# Blanks
+EOL         <- '\r\n' / '\n' / '\r'                {''}
+Comment     <- "#" (!EOL .)* (EOL/EOI)             {''}
+S           <- (' ' / '\t' / EOL / Comment)*       {''}
+
+Identifier  <- [a-zA-Z][a-zA-Z0-9]*                { arg[0][0] + (''.join([a[0] for a in arg[1]]) if len(arg) > 1 else '') }
