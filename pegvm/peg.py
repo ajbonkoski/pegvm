@@ -35,9 +35,10 @@ class Grammar:
         rule = self.rule_dict[top_rule]
         self.top_rule = rule
 
-    def parse(self, string):
+    def parse(self, string, top_rule=None):
         inputter = Inputter(string)
-        return self.top_rule.parse(inputter)
+        rule = self.top_rule if top_rule == None else self.rule_dict[top_rule]
+        return rule.parse(inputter)
 
     def lookup_name(self, name):
         return self.rule_dict[name]
