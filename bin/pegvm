@@ -88,9 +88,9 @@ def read_file(fname):
         sys.exit(1)
 
 def do_parse(parser, input_fname, debug):
-    ConfigureParserInt(input_debug)
+    ConfigureParserInt(debug)
     input_data = read_file(input_fname)
     result = parse_grammar(parser, input_fname, input_data)
-    print "from pegvm.peg import *\nGRAMMAR={}".format(result)
+    print result
 
 if __name__ == '__main__': main()
