@@ -1,0 +1,94 @@
+#!/usr/bin/env python
+
+import imp
+from pegvm import *
+from pegvm.peg import *
+
+import sys
+import os
+import os.path
+from getopt import GetoptError, getopt as GetOpt
+
+def usage(fd):
+	fd.write("\n")
+
+	fd.write("Pegvmc: Pegvm Compiler\n")
+	fd.write("Anthony J Bonkoski, ajbonkoski@gmail.com\n")
+	fd.write("\n")
+
+	fd.write("Usage: %s [OPTIONS] [INPUT-FILE]\n" % os.path.basename(sys.argv[0]))
+	fd.write("\n")
+
+	fd.write("\t-d, --debug=<int>      Debug the parsing of the PEG syntax file\n")
+	fd.write("\t-h, --help                    Show help output\n")
+        fd.write("\n")
+
+	if fd == sys.stderr:
+		sys.exit(1)
+	else:
+		sys.exit(0)
+
+def parse_int(v):
+    try:
+        return int(v)
+    except Exception:
+        sys.stderr.write("error: expected and integer, got '{0}'".format(v))
+        usage(sys.stderr)
+
+def main():
+    MIN_ARGC = 2
+
+    fname = None
+    debug = 0
+
+    short_options = "hd:"
+    long_options = ["help", "debug="]
+
+    if len(sys.argv) < MIN_ARGC:
+       	usage(sys.stderr)
+
+    try:
+        opts, args = GetOpt(sys.argv[1:], short_options, long_options)
+    except GetoptError, e:
+        sys.stderr.write("{0}\n".format(e))
+        usage(sys.stderr)
+
+    for opt, arg in opts:
+        if opt in ("-h", "--help"):
+            usage(sys.stdout)
+        elif opt in ("-d", "--debug"):
+            debug = arg
+
+    if len(args) > 0:
+        fname = args[0]
+
+
+    ## final validation
+    if fname == None:
+        sys.stderr.write("error: you must provide an input file")
+        usage(sys.stderr)
+
+    do_compile(fname, debug)
+    sys.exit(0)
+
+def read_file(fname):
+    try:
+        return open(fname).read()
+    except IOError as ex:
+        print ex
+        sys.stderr.write("error: failed to read '{0}'".format(fname))
+        sys.exit(1)
+
+def do_compile(fname, debug):
+    ## set the GRAMMAR
+    ConfigureParserInt(debug)
+    data = read_file(fname)
+    parsed = parse_grammar(PEG_GRAMMAR, 'syntax', data)
+
+    ## quick verify
+    GRAMMAR = eval(parsed)
+
+    ## do output
+    print "from pegvm.peg import *\nGRAMMAR={}".format(parsed)
+
+if __name__ == '__main__': main()

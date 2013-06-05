@@ -7,5 +7,5 @@ setup(name='pegvm',
       author='Anthony J Bonkoski',
       author_email='ajbonkoski@gmail.com',
       packages=['pegvm'],
-      scripts=["bin/pegvm_parse"],
+      scripts=["bin/pegvm_parse", "bin/pegvmc"],
       zip_safe=False)
