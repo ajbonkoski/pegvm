@@ -97,7 +97,7 @@ class Result:
         #print "_Action: "+self.name+"{"+str(action)+"}\n{", self._elements_to_arg_list(), "}"
         if action == None:
             if ALLOW_NO_ACTIONS:
-                return self
+                action = "self.name + '(' + str(arg) + ')'"
             else:
                 print "Error: No Action for '"+self.name+"'"
                 print "For: {"+str(self._elements_to_arg_list())+"}"
