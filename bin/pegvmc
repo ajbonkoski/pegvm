@@ -57,7 +57,7 @@ def main():
         if opt in ("-h", "--help"):
             usage(sys.stdout)
         elif opt in ("-d", "--debug"):
-            debug = arg
+            debug = parse_int(arg)
 
     if len(args) > 0:
         fname = args[0]
