@@ -76,20 +76,27 @@ def main():
     parser_module = imp.load_source('parser_module', parser_fname)
     parser = parser_module.GRAMMAR
 
-    do_parse(parser, input_fname, debug)
+    input_data = get_input_data(input_fname)
+    do_parse(parser, input_fname, input_data, debug)
     sys.exit(0)
 
-def read_file(fname):
+def read_file(f):
     try:
-        return open(fname).read()
+        return f.read()
     except IOError as ex:
         print ex
         sys.stderr.write("error: failed to read '{0}'".format(fname))
         sys.exit(1)
 
-def do_parse(parser, input_fname, debug):
+def get_input_data(fname):
+    ## read from stdin??
+    if fname == '-':
+        return read_file(sys.stdin)
+    else:
+        return read_file(open(fname, 'r'))
+
+def do_parse(parser, input_fname, input_data, debug):
     ConfigureParserInt(debug)
-    input_data = read_file(input_fname)
     result = parse_grammar(parser, input_fname, input_data)
     print result
 
