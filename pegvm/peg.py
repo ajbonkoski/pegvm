@@ -18,29 +18,78 @@ def ConfigureParserInt(n):
     ENABLE_ACTION_DEBUG_ALL = (n>>0)&1 == 1
 
 
-##### Action Helper functions #####
+
+###################################################################
+##################### Action Helper functions #####################
+###################################################################
+def _action_transform(action):
+    for i in range(10):
+        s = str(i)
+        action = action.replace('...'+s, 'Nth3('+s+')')
+    for i in range(10):
+        s = str(i)
+        action = action.replace('..'+s, 'Nth2('+s+')')
+    for i in range(10):
+        s = str(i)
+        action = action.replace('.'+s,  'Nth1('+s+')')
+    return action
+
+
 STR_TYPE = type('')
 LIST_TYPE = type([])
-
+DATA = None    # args is dropped here for each Action
 def p(d): print d; return d
 
-def merge(data, i, n=None):
-    def recursive(data):
-        t = type(data)
-        if t == STR_TYPE:
-            return data
-        assert(t == LIST_TYPE)
-        return ''.join([recursive(a) for a in data])
+def _merge_recursive(data):
+    t = type(data)
+    if t == STR_TYPE:
+        return data
+    assert(t == LIST_TYPE)
+    return ''.join([_merge_recursive(a) for a in data])
 
-    if i < len(data) and (n == len(data) or n == None):
-        return recursive(data[i])
+def merge(i, n=None):
+    if i < len(DATA) and (n == len(DATA) or n == None):
+        return _merge_recursive(DATA[i])
     else:
         return ''
+
+def Nth1(i): return DATA[i]
+def Nth2(i): return DATA[i][0]
+def Nth3(i): return DATA[i][0][0]
+
+def arg_array1(i, j, require=None):
+    if require != None and len(DATA) < require:
+        return []
+    return [a[j] for a in DATA[i]]
+
+def arg_array2(i, j, require=None):
+    if require != None and len(DATA) < require:
+        return []
+    return [a[j][0] for a in DATA[i]]
+
+def merge_array1(i, j, require=None):
+    return _merge_recursive(arg_array1(i, j, require))
+merge_array = merge_array1
+
+def merge_array2(i, j, require=None):
+    return _merge_recursive(arg_array2(i, j, require))
+
+def arg_array3(i, j, require=None):
+    if require != None and len(DATA) < require:
+        return []
+    return [a[j][0][0] for a in DATA[i]]
+
+def merge_array3(i, j, require=None):
+    return _merge_recursive(arg_array3(i, j, require))
 
 def stringify(data):
     assert(type(data) == STR_TYPE)
     return '"{}"'.format(data)
 
+
+###################################################################
+########################### PEG Classes ###########################
+###################################################################
 
 class Grammar:
     def __init__(self, rules, lib_name=None):
@@ -128,7 +177,11 @@ class Result:
                 print "For: {"+str(self._elements_to_arg_list())+"}"
                 exit(1)
 
+        ## setup the helpers, and goodies
         arg = self._elements_to_arg_list()
+        global DATA; DATA = arg
+        action = _action_transform(action);
+
         if ENABLE_ACTION_DEBUG:
             print "Action: "+self.name+"{"+str(action)+"}\n{", self._elements_to_arg_list(), "}"
         val = eval(action if action != None else "''")
