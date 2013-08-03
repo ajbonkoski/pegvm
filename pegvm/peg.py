@@ -17,6 +17,31 @@ def ConfigureParserInt(n):
     ENABLE_ACTION_DEBUG = (n>>1)&1 == 1
     ENABLE_ACTION_DEBUG_ALL = (n>>0)&1 == 1
 
+
+##### Action Helper functions #####
+STR_TYPE = type('')
+LIST_TYPE = type([])
+
+def p(d): print d; return d
+
+def merge(data, i, n=None):
+    def recursive(data):
+        t = type(data)
+        if t == STR_TYPE:
+            return data
+        assert(t == LIST_TYPE)
+        return ''.join([recursive(a) for a in data])
+
+    if i < len(data) and (n == len(data) or n == None):
+        return recursive(data[i])
+    else:
+        return ''
+
+def stringify(data):
+    assert(type(data) == STR_TYPE)
+    return '"{}"'.format(data)
+
+
 class Grammar:
     def __init__(self, rules, lib_name=None):
         assert len(rules) >= 1
