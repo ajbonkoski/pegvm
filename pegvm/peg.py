@@ -38,7 +38,9 @@ def _action_transform(action):
 STR_TYPE = type('')
 LIST_TYPE = type([])
 DATA = None    # args is dropped here for each Action
+SZ = 0
 def p(d): print d; return d
+def pexit(*args): print args; exit(1)
 
 def _merge_recursive(data):
     t = type(data)
@@ -47,8 +49,10 @@ def _merge_recursive(data):
     assert(t == LIST_TYPE)
     return ''.join([_merge_recursive(a) for a in data])
 
-def merge(i, n=None):
-    if i < len(DATA) and (n == len(DATA) or n == None):
+def merge(i=None, n=None):
+    if i == None:
+        return _merge_recursive(DATA)
+    elif i < len(DATA) and (n == len(DATA) or n == None):
         return _merge_recursive(DATA[i])
     else:
         return ''
@@ -86,6 +90,7 @@ def stringify(data):
     assert(type(data) == STR_TYPE)
     return '"{}"'.format(data)
 
+def sel(a, b, ck): return a if ck == SZ else b
 
 ###################################################################
 ########################### PEG Classes ###########################
@@ -180,6 +185,7 @@ class Result:
         ## setup the helpers, and goodies
         arg = self._elements_to_arg_list()
         global DATA; DATA = arg
+        global SZ; SZ = len(DATA)
         action = _action_transform(action);
 
         if ENABLE_ACTION_DEBUG:
