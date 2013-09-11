@@ -229,29 +229,41 @@ class Result:
             return new_result
 
 
-recurse_depth = 0
 class Node:
-    """base class: each node must have a 'children' list"""
+    """Base class for all "parsing" nodes. Each node should have a children
+    list, containing its sub-parsing-nodes."""
+
     def __init__(self, children):
+        """Initialize a new Node with a list of children"""
         self.children = children
         self.grammar = None
 
     def __str__(self):
         name = self.__class__.__name__
-        return '[' + name + ': ' + ','.join([str(c) for c in self.children]) + ']'
+        return '[{}:{}]'.format(name, ','.join(map(str, self.children)))
 
+    _recurse_depth = 0
     def parse(self, data):
-        global recurse_depth
+        """Perform the parsing of this Node. This is a wrapper function
+        around the "real" virtual method "do_parse"""
+
+        ## before actions
         if OPTIONS['enter-exit-debug']:
-            recurse_depth += 1
-            print str(recurse_depth) + ": Entering 'do_parse' for: "+self.__class__.__name__+" with '"+data.peek_clean()+"'"
+            self.__class__._recurse_depth += 1
+            print str(self.__class__._recurse_depth) + ": Entering 'do_parse' for: "+self.__class__.__name__+" with '"+data.peek_clean()+"'"
+
+        ## real work
         result = self.do_parse(data)
+
+        ## after actions
         if OPTIONS['enter-exit-debug']:
-            recurse_depth -= 1
-            print str(recurse_depth) + ": Leaving 'do_parse' for: "+self.__class__.__name__+"("+str(bool(result))+")"+" with '"+data.peek_clean()+"'"
+            self.__class__._recurse_depth -= 1
+            print str(self.__class__._recurse_depth) + ": Leaving 'do_parse' for: "+self.__class__.__name__+"("+str(bool(result))+")"+" with '"+data.peek_clean()+"'"
+
         return result
 
     def set_grammar(self, grammar):
+        """Set the Grammar object containing this Node"""
         self.grammar = grammar
         for child in self.children:
             if 'set_grammar' in dir(child):
