@@ -5,22 +5,24 @@ import imp
 from inputter import *
 from peg_action_lib import *
 
-ALLOW_NO_ACTIONS = False
-ENABLE_ENTER_EXIT_DEBUG = False
-ENABLE_RULE_DEBUG = False
-ENABLE_ACTION_DEBUG = False
-ENABLE_ACTION_DEBUG_ALL = False
+class PegvmError(Exception): pass
+
+
+OPTIONS = {
+  'allow-no-actions':  False,
+  'enter-exit-debug':  False,
+  'rule-debug':        False,
+  'action-debug':      False,
+  'action-debug-all':  False
+}
+
 def ConfigureParserInt(n):
-    global ALLOW_NO_ACTIONS
-    global ENABLE_ENTER_EXIT_DEBUG, ENABLE_RULE_DEBUG
-    global ENABLE_ACTION_DEBUG, ENABLE_ACTION_DEBUG_ALL
-    ALLOW_NO_ACTIONS = (n>>4)&1 == 1
-    ENABLE_ENTER_EXIT_DEBUG = (n>>3)&1 == 1
-    ENABLE_RULE_DEBUG = (n>>2)&1 == 1
-    ENABLE_ACTION_DEBUG = (n>>1)&1 == 1
-    ENABLE_ACTION_DEBUG_ALL = (n>>0)&1 == 1
-
-
+    global OPTIONS
+    OPTIONS['allow-no-actions'] = (n>>4)&1 == 1
+    OPTIONS['enter-exit-debug'] = (n>>3)&1 == 1
+    OPTIONS['rule-debug']       = (n>>2)&1 == 1
+    OPTIONS['action-debug']     = (n>>1)&1 == 1
+    OPTIONS['action-debug-all'] = (n>>0)&1 == 1
 
 ###################################################################
 ##################### Action Helper functions #####################
@@ -101,41 +103,39 @@ def sel(a, b, ck): return a if ck == SZ else b
 
 class Grammar:
     def __init__(self, rules, lib_name=None):
-        assert len(rules) >= 1
+        """Create a grammar with a list of Rules and optionally a python
+        library module to call from the actions"""
+        if len(rules) < 1:
+            raise PegvmException("Cannot create a grammar with no rules!")
+        if "EOI" in rules:
+            raise PegvmException("Invalid rule name: 'EOI'")
+
         self.lib_name = lib_name
         self.lib = imp.load_source('lib', self.lib_name+'.py') if self.lib_name != None else None
         self.top_rule = rules[0]
         self.rules = rules
         self.rule_dict = {}
-        assert "EOI" not in rules
         for rule in rules:
             rule.set_grammar(self)
             self.rule_dict[rule.name] = rule
         self.rule_dict["EOI"] = EOI([])
 
-    def set_top_rule(self, top_rule):
-        rule = self.rule_dict[top_rule]
-        self.top_rule = rule
-
     def parse(self, string, top_rule=None):
+        """Parse the passed string using this Grammar. Optionally, user can
+        provide a top_rule to start the parsing."""
         inputter = Inputter(string)
         rule = self.top_rule if top_rule == None else self.rule_dict[top_rule]
         return rule.parse(inputter)
 
     def lookup_name(self, name):
+        """Finds and returns the Rule object corresponding to 'name'"""
+        if name not in self.rule_dict:
+            raise PegvmException("Failed to find rule named '{}'".format(name))
         return self.rule_dict[name]
 
-    def add_rule_ext(self, parent_name, rule_name, method):
-        rule = self.rule_dict[parent_name]
-        rule.rule_ext(rule_name, method)
-
-    def add_new_rule(self, rule):
-        rule.set_grammar(self)
-        self.rule_dict[rule.name] = rule
-        self.rules.append(rule)
-
     def __repr__(self):
-        return "Grammar("+repr(self.rules)+(", lib_name='{0}'".format(self.lib_name) if self.lib_name != None else "")+")"
+        return "Grammar({}, lib_name='{}'".format(self.rules, self.lib_name)
+
 
 class Result:
     """returned by each node"""
@@ -178,7 +178,7 @@ class Result:
             return self
         #print "_Action: "+self.name+"{"+str(action)+"}\n{", self._elements_to_arg_list(), "}"
         if action == None:
-            if ALLOW_NO_ACTIONS:
+            if OPTIONS['allow-no-actions']:
                 action = "self.name + '(' + str(arg) + ')'"
             else:
                 print "Error: No Action for '"+self.name+"'"
@@ -191,14 +191,14 @@ class Result:
         global SZ; SZ = len(DATA)
         action = _action_transform(action);
 
-        if ENABLE_ACTION_DEBUG:
+        if OPTIONS['action-debug']:
             print "Action: "+self.name+"{"+str(action)+"}\n{", self._elements_to_arg_list(), "}"
         val = eval(action if action != None else "''")
-        if ENABLE_ACTION_DEBUG:
+        if OPTIONS['action-debug']:
             print "Value: '"+str(val)+"'\n"
         new_result = Result.success([val])
         new_result.set_name(self.name)
-        if action == None and not (ENABLE_ACTION_DEBUG and ENABLE_ACTION_DEBUG_ALL):
+        if action == None and not (OPTIONS['action-debug'] and OPTIONS['action-debug-all']):
             return self
         else:
             return new_result
@@ -235,11 +235,11 @@ class Node:
 
     def parse(self, data):
         global recurse_depth
-        if ENABLE_ENTER_EXIT_DEBUG:
+        if OPTIONS['enter-exit-debug']:
             recurse_depth += 1
             print str(recurse_depth) + ": Entering 'do_parse' for: "+self.__class__.__name__+" with '"+data.peek_clean()+"'"
         result = self.do_parse(data)
-        if ENABLE_ENTER_EXIT_DEBUG:
+        if OPTIONS['enter-exit-debug']:
             recurse_depth -= 1
             print str(recurse_depth) + ": Leaving 'do_parse' for: "+self.__class__.__name__+"("+str(bool(result))+")"+" with '"+data.peek_clean()+"'"
         return result
@@ -272,13 +272,13 @@ class Rule(Node):
 
     def do_parse(self, data):
         global rule_announce_indent
-        if ENABLE_RULE_DEBUG:
+        if OPTIONS['rule-debug']:
             pre_str = ' '*(rule_announce_indent*4)
             print pre_str+"Entering Rule: "+self.name+" with '"+data.peek_clean()+"'"
             rule_announce_indent += 1
         result = self.children[0].parse(data)
         result.set_name(self.name)
-        if ENABLE_RULE_DEBUG:
+        if OPTIONS['rule-debug']:
             rule_announce_indent -= 1
             print pre_str+"Leaving Rule: "+self.name+" with "+str(bool(result))
         return result.execute_action(self.action, self.grammar.lib)
