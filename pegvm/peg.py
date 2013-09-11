@@ -1,6 +1,9 @@
-from inputter import *
+""""PegVM main module including each of the classes implementing
+the parsing engine."""
+
 import imp
-from peg_action_sugar import *
+from inputter import *
+from peg_action_lib import *
 
 ALLOW_NO_ACTIONS = False
 ENABLE_ENTER_EXIT_DEBUG = False
