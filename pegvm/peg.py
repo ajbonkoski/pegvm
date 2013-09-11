@@ -120,6 +120,9 @@ class Grammar:
             self.rule_dict[rule.name] = rule
         self.rule_dict["EOI"] = EOI([])
 
+    def __repr__(self):
+        return "Grammar({}, lib_name='{}'".format(self.rules, self.lib_name)
+
     def parse(self, string, top_rule=None):
         """Parse the passed string using this Grammar. Optionally, user can
         provide a top_rule to start the parsing."""
@@ -133,37 +136,58 @@ class Grammar:
             raise PegvmException("Failed to find rule named '{}'".format(name))
         return self.rule_dict[name]
 
-    def __repr__(self):
-        return "Grammar({}, lib_name='{}'".format(self.rules, self.lib_name)
-
 
 class Result:
-    """returned by each node"""
+    """Result is a generic object returned by each parsing Node."""
+
     def __init__(self, good, elements, action):
+        """Initialize a new Result with a boolean denoting whether the parse
+        was successful (good), the individual elements, and an action to
+        perform on the elements."""
         self.good = good
         self.elements = elements
         self.action = action
         self.name = None
 
+    def __bool__(self):
+        return self.good
+    __nonzero__ = __bool__
+
+    def __repr__(self):
+        return 'Result({}, {}, {})'.format(self.name, self.good, self.elements)
+
+    indent_level = 0
+    def __str__(self):
+        s = '{}: {}\n'.format(self.name, self.good)
+        self.__class__.indent_level += 1
+        for elem in self.elements:
+            str_elem = str(elem)
+            if type(elem) == type(''):
+                str_elem += '\n'
+            s+= ' '*(4*self.__class__.indent_level) + str_elem
+        self.__class__.indent_level -= 1
+        return s
+
     @staticmethod
     def success(elements, action=None):
+        """Create a Result object that denotes parse success."""
         return Result(True, elements, action)
 
     @staticmethod
     def fail(elements, action=None):
+        """Create a Result object that denotes parse failure."""
         return Result(False, elements, action)
 
-    @staticmethod
-    def reduce_list(lst):
-        return Result.success(sum([e.elements for e in lst]))
-
     def is_good_but_empty(self):
+        """Deprecated: Removal coming to an API near you."""
         return self.good and self.name == None and len(self.elements) == 0
 
     def set_name(self, name):
+        """Set the name of the parsing Node that created this Result"""
         self.name = name
 
     def _elements_to_arg_list(self):
+        """Deprecated: Removal coming to an API near you."""
         result_type = type(self)
         arg_list = []
         for elem in self.elements:
@@ -174,6 +198,7 @@ class Result:
         return arg_list
 
     def execute_action(self, action, lib):
+        """Execute the associated action on the 'elements', producing a new result."""
         if not self.good:
             return self
         #print "_Action: "+self.name+"{"+str(action)+"}\n{", self._elements_to_arg_list(), "}"
@@ -203,24 +228,6 @@ class Result:
         else:
             return new_result
 
-    def __bool__(self):
-        return self.good
-    __nonzero__ = __bool__
-
-    def __repr__(self):
-        return 'Result('+str(self.name)+', '+str(self.good)+', '+str([repr(elem) for elem in self.elements])+')'
-
-    indent_level = 0
-    def __str__(self):
-        s = str(self.name)+': '+str(self.good)+'\n'
-        self.__class__.indent_level += 1
-        for elem in self.elements:
-            str_elem = str(elem)
-            if type(elem) == type(''):
-                str_elem += '\n'
-            s+= ' '*(4*self.__class__.indent_level) + str_elem
-        self.__class__.indent_level -= 1
-        return s
 
 recurse_depth = 0
 class Node:
@@ -252,6 +259,7 @@ class Node:
 
 
 def PEGNode(cls):
+    """Decorates all PEG Node classes. Currently is a noop."""
     return cls
 
 @PEGNode
