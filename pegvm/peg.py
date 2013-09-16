@@ -276,6 +276,7 @@ def PEGNode(cls):
 
 @PEGNode
 class EOI(Node):
+    """End-of-input parsing node."""
     def do_parse(self, data):
         if data.eof():
             return Result.success([])
@@ -285,6 +286,7 @@ class EOI(Node):
 rule_announce_indent = 0
 @PEGNode
 class Rule(Node):
+    """Rule parsing node."""
     def __init__(self, name_elem, children, action=None):
         self.children = children
         self.name = name_elem.get_name()
@@ -304,6 +306,8 @@ class Rule(Node):
         return result.execute_action(self.action, self.grammar.lib)
 
     def rule_ext(self, rule_name, method):
+        """Extend the Rule's Expresion with a new parse Node. The 'method' argument
+        allows uses to select 'append' or 'prepend' extension modes."""
         self.children[0].expr_ext(rule_name, method)
 
     def __repr__(self):
@@ -311,6 +315,7 @@ class Rule(Node):
 
 @PEGNode
 class Expression(Node):
+    """Expression parasing node: a set of Sequence nodes connected by alternation."""
     def do_parse(self, data):
         for seq in self.children:
             data.save_state()
@@ -322,6 +327,8 @@ class Expression(Node):
         return Result.fail([])
 
     def expr_ext(self, rule_name, method):
+        """Extend the Expresion with a new parse Node. The 'method' argument
+        allows uses to select 'append' or 'prepend' extension modes."""
         expr = Expression([Prefix([Suffix([Name([rule_name])])])])
         if method == "prepend":
             self.children.insert(0, expr)
@@ -334,6 +341,7 @@ class Expression(Node):
 
 @PEGNode
 class Sequence(Node):
+    """Sequence parsing node: a set of nodes in sequence."""
     def do_parse(self, data):
         result_list = []
         for pre in self.children:
@@ -349,6 +357,7 @@ class Sequence(Node):
 
 @PEGNode
 class Prefix(Node):
+    """Prefix parsing node: enables use of & or ! lookaheads."""
     def do_parse(self, data):
         # no prefix?
         if len(self.children) == 1:
@@ -373,6 +382,7 @@ class Prefix(Node):
 
 @PEGNode
 class Suffix(Node):
+    """Suffix parsing node: enables repetition (* + ?)."""
     def do_parse(self, data):
         primary = self.children[0]
 
@@ -416,10 +426,11 @@ class Suffix(Node):
 
 @PEGNode
 class Primary(Node):
-    """base class for all primaries"""
+    """A Base Class Node for all Primaries"""
 
 @PEGNode
 class Literal(Primary):
+    """Literal parsing node: a string literal to match."""
     def do_parse(self, data):
         literal = self.children[0]
         sofar = ''
@@ -440,6 +451,8 @@ class Literal(Primary):
 
 @PEGNode
 class Class(Primary):
+    """Class parsing node: a range of characters that
+    the input can match."""
     def do_parse(self, data):
         if data.eof():
             return Result.fail(["", "eof"])
@@ -461,6 +474,7 @@ class Class(Primary):
 
 @PEGNode
 class Any(Primary):
+    """Any parsing node: any character can match."""
     def do_parse(self, data):
         if data.eof():
             return Result.fail(["", "eof"])
@@ -472,6 +486,7 @@ class Any(Primary):
 
 @PEGNode
 class Group(Primary):
+    """Group parsing node: a parenthesized PEG expression."""
     def do_parse(self, data):
         exp = self.children[0]
         return exp.parse(data)
@@ -480,12 +495,15 @@ class Group(Primary):
         return 'Group('+repr(self.elements)+')'
 
 class Name(Primary):
+    """Name parsing node: A rule name for both defining
+    and referencing."""
     def do_parse(self, data):
         name = self.get_name()
         exp = self.grammar.lookup_name(name)
         return exp.parse(data)
 
     def get_name(self):
+        """Get the name string from the internal node datastructure."""
         return self.children[0]
 
     def __repr__(self):
